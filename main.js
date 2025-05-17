@@ -1,0 +1,5 @@
+const { app,BrowserWindow,ipcMain,shell }=require('electron');const path=require('path');const{spawn}=require('child_process');let mainWindow,proc,timer;
+function createWindow(){mainWindow=new BrowserWindow({width:900,height:700,webPreferences:{nodeIntegration:true,contextIsolation:false}});mainWindow.loadFile('index.html');}
+app.whenReady().then(createWindow);app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
+ipcMain.on('start-backup',(e,args)=>{if(proc){e.reply('log','已有任务');return;}let scr=path.join(__dirname,'backup.js');proc=spawn(process.execPath,[scr,args.keywords,args.users,args.startDate,args.endDate,args.quality]);proc.stdout.on('data',d=>e.reply('log',d.toString()));proc.stderr.on('data',d=>e.reply('log','ERR:'+d));proc.on('close',()=>{e.reply('log','备份完成');shell.openPath(path.join(__dirname,'output','index.html'));proc=null;});});
+ipcMain.on('set-auto',(e,n)=>{if(timer)clearInterval(timer);if(n>0){timer=setInterval(()=>mainWindow.webContents.send('start-backup',{keywords:'',users:'',startDate:'',endDate:'',quality:'highest'}),n*3600*1000);e.reply('log',`自动备份每${n}h`);}else{e.reply('log','自动取消');}});
